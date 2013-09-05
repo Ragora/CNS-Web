@@ -1,0 +1,92 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<HTML>
+	<head>
+		<title>{{ title }}</title>
+	</head>
+	
+	<body>
+		<center>
+				<img src="content/cisco.png"></img></br>
+				{% if error is defined %}
+				<table>
+					<tr>
+						<td>
+							<img src="content/caution.png" width="64" height="64"></img>
+						</td>
+						<td>
+							{{ error }}</br></br>
+						</td>
+					</tr>
+				</table>
+				{% endif %}
+				
+				<form name ="input" action="form" method="post">
+					<table border="0">
+						<tr>
+							<td align="right">
+								First Name: <input type="text" value="{{ firstname }}" name="firstname">
+							</td>
+							
+							<td align="right">
+								Last Name: <input type="text" value="{{ lastname }}" name="lastname">
+							</td>
+						</tr>
+						
+						<tr>
+							<td align="right">
+								Street: <input type="text" value="{{ street }}" name="street">
+							</td>
+						</tr>
+						
+						<tr>
+							<td align="right">
+								City: <input type="text" value="{{ city }}" name="city">
+							</td>
+							<td align="right">
+								ZIP Code: <input type="text" value="{{ zip }}" name="zip">
+							</td>
+						</tr>
+						
+						<tr>
+							<td align="right">
+								E-Mail: <input type="text" value="{{ email }}" name="email">
+							</td>
+						</tr>
+						
+						<tr>
+							<td align="right">
+								Home Phone: <input type="text" value="{{ homephone }}" name="homephone">
+							</td>
+							
+							<td>
+								Cell Phone: <input type="text" value="{{ cellphone }}", name="cellphone">
+							</td>
+						</tr>
+						
+						<tr>
+							<td>
+								School District:
+								<select name="school">
+									{% for school in schools %}
+										<option value="{{ school }}">{{ school }}</option>
+									{% endfor %}
+								</select>
+							</td>
+							
+							<td>
+								Select Grade:
+								<select name="grade">
+								  <option value="select">Select</option>
+								  <option value="9">9th Grade</option>
+								  <option value="10">10th Grade</option>
+								  <option value="11">11th Grade</option>
+								  <option value="12">12th Grade</option>
+								</select>
+							</td>
+						</tr>
+					</table></br>
+					<input type="submit" value="Submit">
+				</form>
+		</center>
+	</body>
+</HTML>
