@@ -50,11 +50,15 @@ class ApplicationException(Exception):
 	""" This is an exception used internally to help make the code cleaner. """
 				
 @app.route("/")
-def form():
+def main():
 	return render_template('index.html')
 	
-@app.route("/form", methods=["POST","GET"])
-def process():
+@app.route("/admin", methods=["POST","GET"])
+def admin():
+	return render_template('login.html')
+	
+@app.route("/process", methods=["POST","GET"])
+def form():
 	if (request.method == "POST"):
 		firstname = request.form["firstname"]
 		lastname = request.form["lastname"]
@@ -110,18 +114,21 @@ def process():
 
 			# Check if the home phone is valid
 			homephone = str(homephone).translate(None, '(.-) ')
+			if (homephone == ''): homephone = '0'
+			cellphone = str(cellphone).translate(None, '(.-) ')
+			if (cellphone == ''): cellphone = '0'
+			
 			try:
 				homephone_test = int(homephone)
-				if (len(homephone) != 10):
+				if (len(homephone) != 10 and len(cellphone) == 1):
 					raise ApplicationException(1)
 			except ValueError:
 				raise ApplicationException(1)
 			
 			# Check if the cell phone is valid
-			cellphone = str(cellphone).translate(None, '(.-) ')
 			try:
 				cellphone_test = int(cellphone)
-				if (len(cellphone) != 10):
+				if (len(cellphone) != 10 and len(homephone) == 1):
 					raise ApplicationException(2)
 			except ValueError:
 				raise ApplicationException(2)
@@ -133,11 +140,11 @@ def process():
 		if (error_number == 0): # No Problem
 			return render_template('index.html')
 		elif (error_number == 1): # Bad Phone number
-			return render_template('form.html', title='CNS - Error', error='Malformed home phone number detected.', firstname=firstname,
+			return render_template('form.html', title='CNS - Error', error='Please type in either phone number.', firstname=firstname,
 									lastname=lastname, street=street, cellphone=cellphone, city=city, zip=zip, email=email, 
 									schools=schools)
 		elif (error_number == 2): # Bad Cell Phone
-			return render_template('form.html', title='CNS - Error', error='Malformed cell phone number detected.', firstname=firstname,
+			return render_template('form.html', title='CNS - Error', error='Please type in either phone number.', firstname=firstname,
 									lastname=lastname, street=street, homephone=homephone, city=city, zip=zip, email=email, schools=schools)
 		elif (error_number == 3): # Bad ZIP
 			return render_template('form.html', title='CNS - Error', error='Malformed ZIP code detected.', firstname=firstname,
