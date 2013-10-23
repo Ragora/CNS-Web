@@ -3,12 +3,19 @@
 	
 	Copyright (c) 2013 Robert MacGregor
 """
-from flask import Flask, render_template, request
+import os
+
+from settings import Settings
+
+import bcrypt
+from flask import Flask, render_template, request, session
 from flask.ext.sqlalchemy import SQLAlchemy
 
 app = Flask(__name__, static_folder='static', static_url_path='/content')
-app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql://localhost'
+work_factor = 10
 db = SQLAlchemy(app)
+# Only one Admin user so we don't need to track any other logins.
+app.session_token = 0
 
 class Student(db.Model):
 	id = db.Column(db.Integer, primary_key=True)
@@ -17,24 +24,49 @@ class Student(db.Model):
 	email = db.Column(db.String(32), unique=True)
 	homephone = db.Column(db.String(32), unique=True)
 	cellphone = db.Column(db.String(32), unique=True)
+	district = db.Column(db.String(32), unique=True)
+	city = db.Column(db.String(32), unique=True)
+	street = db.Column(db.String(32), unique=True)
+	zip = db.Column(db.Integer, unique=True)
+	grade = db.Column(db.Integer, unique=True)
+
+	date = db.Column(db.String(32), unique=True)
 	
-	def __init__(self, first_name):
+	def __init__(self, first_name, last_name, email, homephone, cellphone, district, city, street, zip, grade):
 		self.first_name = first_name
+		self.last_name = last_name
+		self.email = email
+		self.homephone = homephone
+		self.cellphone = cellphone
+		self.district = district
+		self.city = city
+		self.street = street
+		self.zip = zip
+		self.grade = grade
+
+		self.date = '1/15/95'
 		
 	def __repr__(self):
 		return '<Student %s>' % (self.first_name)
 		
 class Administrator(db.Model):
 	id = db.Column(db.Integer, primary_key=True)
-	name = db.Column(db.String(32), unique=True)
-	password = db.Column(db.String(128), unique=True)
+	username = db.Column(db.String(32), unique=True)
+	name = db.Column(db.String(64), unique=True)
+	hash = db.Column(db.String(128), unique=True)
 	
-	def __init__(self, name, password):
+	def __init__(self, name, username, password):
+		self.username = username
+		self.hash = bcrypt.hashpw(password, bcrypt.gensalt(work_factor))
 		self.name = name
-		self.password = password # TODO: Hash it
+
+	def test_password(self, password):
+		if (bcrypt.hashpw(password, self.hash) == self.hash):
+			return True
+		return False
 	
 	def __repr__(self):
-		return '<Administrator %s,%s>' % (self.name, self.password)
+		return '<Administrator %s,%s,%s>' % (self.username, self.name, self.hash)
 
 def get_schools(select=True):
 	if (select):
@@ -52,12 +84,59 @@ class ApplicationException(Exception):
 @app.route("/")
 def main():
 	return render_template('index.html')
+
+@app.route("/changeconfig", methods=["POST"])
+def changeconfig():
+	token = None
+	if ('token' in session):
+		token = session['token']
+
+	if (token is None or token != app.session_token):
+		return 'You are not logged in.'
+
+	return 'blah'
+
+@app.route("/config")
+def config():
+	token = None
+	if ('token' in session):
+		token = session['token']
+
+	if (token is None or token != app.session_token):
+		return 'You are not logged in.'
+
+	account = db.session.query(Administrator).first()
+	return render_template('config.html', username=account.username, realname=account.name)
 	
 @app.route("/admin", methods=["POST","GET"])
 def admin():
-	return render_template('login.html')
-	
-@app.route("/process", methods=["POST","GET"])
+	token = None
+	if ('token' in session):
+		token = session['token']
+
+	if (request.method == "GET"):
+		#account = db.session.query(Administrator).first()
+		return render_template('login.html')
+	#elif (request.method == "GET" and token is not None and token == app.session_token):
+	#	return render_template('panel.html', name=account.name)
+	else:
+		username = request.form["username"]
+		password = request.form["password"]
+
+		account = db.session.query(Administrator).filter_by(username=username).first()
+		if (account is None or account.test_password(password) is not True):
+			return render_template('login.html', error='Invalid username or password.')
+
+		token = os.urandom(24)
+		app.session_token = token
+		session['token'] = token
+
+		if (account.username == 'Default' or account.name == 'Default'):
+			return render_template('panel.html', name=account.name, warning='It appears you need to change your account defaults.')
+		else:
+			return render_template('panel.html', name=account.name)
+
+@app.route("/form", methods=["POST","GET"])
 def form():
 	if (request.method == "POST"):
 		firstname = request.form["firstname"]
@@ -138,6 +217,9 @@ def form():
 
 		# TODO: Perhaps make this some type of switch construct at some point?
 		if (error_number == 0): # No Problem
+			student = Student(firstname, lastname, email, homephone, cellphone, school, city, street, int(zip), int(grade))
+			db.session.add(student)
+			db.session.commit()
 			return render_template('index.html')
 		elif (error_number == 1): # Bad Phone number
 			return render_template('form.html', title='CNS - Error', error='Please type in either phone number.', firstname=firstname,
@@ -163,4 +245,9 @@ def form():
 		return render_template('form.html', title='CNS', schools=get_schools(select=True))
 
 if __name__ == "__main__":
-	app.run(debug=True,host='0.0.0.0')
+	settings = Settings('config.cfg')
+
+	app.config['SQLALCHEMY_DATABASE_URI'] = settings.get_index('DatabaseURI', str)
+	app.secret_key = settings.get_index('SecretKey', str)
+	work_factor = settings.get_index('WorkFactor', int)
+	app.run(debug=True,host='127.0.0.1')

@@ -1,0 +1,26 @@
+<HTML>
+	<head>
+		<title>Administration | Main</title>
+	</head>
+	
+	<body>
+		<center>
+			Welcome, {{ name }}. </br>
+
+			{% if warning is defined %}
+			<table>
+				<tr>
+					<td>
+						<img src="content/caution.png" width="64" height="64"></img>
+					</td>
+					<td>
+						{{ warning }}</br></br>
+					</td>
+				</tr>
+			</table>
+			{% endif %}
+
+			<a href="config">Change Configuration</a>
+		</center>
+	</body>
+</HTML>

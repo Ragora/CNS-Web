@@ -3,14 +3,21 @@
 	
 	Copyright (c) 2013 Robert MacGregor
 """
-from main import db, Administrator
+import main
+from settings import Settings
 
 if __name__ == '__main__':
-	db.create_all()
+	settings = Settings('config.cfg')
+
+	main.app.config['SQLALCHEMY_DATABASE_URI'] = settings.get_index('DatabaseURI', str)
+	main.app.secret_key = settings.get_index('SecretKey', str)
+	main.work_factor = settings.get_index('WorkFactor', int)
+
+	main.db.create_all()
 	
-	main = Administrator('Default', 'ChangeMeNow')
-	db.session.add(main)
-	db.session.commit()
+	default_admin = main.Administrator('Default', 'Default', 'ChangeMeNow')
+	main.db.session.add(default_admin)
+	main.db.session.commit()
 	print('Database successfully initialized.')
 	
 	

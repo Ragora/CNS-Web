@@ -1,0 +1,56 @@
+<HTML>
+	<head>
+		<title>Administration | Configuration</title>
+	</head>
+	
+	<body>
+		<center>
+			Admin Configuration Settings</br></br>
+			<form name="input" action="changeconfig" method="post">
+				<table>
+					<tr>
+						<td>
+							Username: 
+						</td>
+						<td>
+							<input type="text" name="username" value="{{ username }}">
+						</td>
+					</tr>
+					<tr>
+						<td>
+							Real Name: 
+						</td>
+						<td>
+							<input type="text" name="username" value="{{ realname }}">
+						</td>
+					</tr>
+					<tr>
+						<td>
+							Current Password: 
+						</td>
+						<td>
+							<input type="password" name="currentpassword">
+						</td>
+					</tr>
+					<tr>
+						<td>
+							Password: 
+						</td>
+						<td>
+							<input type="password" name="password">
+						</td>
+					</tr>
+					<tr>
+						<td>
+							Confirm Password: 
+						</td>
+						<td>
+							<input type="password" name="confirmpassword">
+						</td>
+					</tr>
+				</table>
+				<input type="submit" value="Confirm">
+			</form>
+		</center>
+	</body>
+</HTML>

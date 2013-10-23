@@ -1,20 +1,32 @@
 <HTML>
 	<head>
-		<title>Administration</title>
+		<title>Administration | Login</title>
 	</head>
 	
 	<body>
 		<center>
 			<img src="content/switch.jpg"></img></br></br>
 			
-			<form name="input" action="form" method="post">
+			{% if error is defined %}
+			<table>
+				<tr>
+					<td>
+						<img src="content/caution.png" width="64" height="64"></img>
+					</td>
+					<td>
+						{{ error }}</br></br>
+					</td>
+				</tr>
+			</table>
+			{% endif %}
+			<form name="input" action="admin" method="post">
 				<table>
 					<tr>
 						<td>
 							Username: 
 						</td>
 						<td>
-							<input type="text" name="user">
+							<input type="text" name="username">
 						</td>
 					</tr>
 					<tr>
