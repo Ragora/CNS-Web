@@ -20,19 +20,19 @@ app.session_token = os.urandom(24)
 
 class Student(db.Model):
 	id = db.Column(db.Integer, primary_key=True)
-	first_name = db.Column(db.String(32), unique=True)
-	last_name = db.Column(db.String(32), unique=True)
-	email = db.Column(db.String(32), unique=True)
-	homephone = db.Column(db.String(32), unique=True)
-	cellphone = db.Column(db.String(32), unique=True)
-	district = db.Column(db.String(32), unique=True)
-	city = db.Column(db.String(32), unique=True)
-	street = db.Column(db.String(32), unique=True)
-	zip = db.Column(db.Integer, unique=True)
-	grade = db.Column(db.Integer, unique=True)
-	year = db.Column(db.Integer, unique=True)
+	first_name = db.Column(db.String(32))
+	last_name = db.Column(db.String(32))
+	email = db.Column(db.String(32))
+	homephone = db.Column(db.String(32))
+	cellphone = db.Column(db.String(32))
+	district = db.Column(db.String(32))
+	city = db.Column(db.String(32))
+	street = db.Column(db.String(32))
+	zip = db.Column(db.Integer)
+	grade = db.Column(db.Integer)
+	year = db.Column(db.Integer)
 
-	date = db.Column(db.String(32), unique=True)
+	date = db.Column(db.String(32))
 	
 	def __init__(self, first_name, last_name, email, homephone, cellphone, district, city, street, zip, grade, year):
 		self.first_name = first_name
@@ -218,6 +218,12 @@ def form():
 		street = request.form["street"]
 		homephone = request.form["homephone"]
 		cellphone = request.form["cellphone"]
+
+		if (homephone == ''):
+			homephone = cellphone
+		if (cellphone == ''):
+			cellphone = homephone
+
 		city = request.form["city"]
 		zip = request.form["zip"]
 		email = request.form["email"]
