@@ -4,6 +4,7 @@
 	Copyright (c) 2013 Robert MacGregor
 """
 import os
+from datetime import date
 
 from settings import Settings
 
@@ -15,7 +16,7 @@ app = Flask(__name__, static_folder='static', static_url_path='/content')
 work_factor = 10
 db = SQLAlchemy(app)
 # Only one Admin user so we don't need to track any other logins.
-app.session_token = 0
+app.session_token = os.urandom(24)
 
 class Student(db.Model):
 	id = db.Column(db.Integer, primary_key=True)
@@ -29,10 +30,11 @@ class Student(db.Model):
 	street = db.Column(db.String(32), unique=True)
 	zip = db.Column(db.Integer, unique=True)
 	grade = db.Column(db.Integer, unique=True)
+	year = db.Column(db.Integer, unique=True)
 
 	date = db.Column(db.String(32), unique=True)
 	
-	def __init__(self, first_name, last_name, email, homephone, cellphone, district, city, street, zip, grade):
+	def __init__(self, first_name, last_name, email, homephone, cellphone, district, city, street, zip, grade, year):
 		self.first_name = first_name
 		self.last_name = last_name
 		self.email = email
@@ -43,6 +45,7 @@ class Student(db.Model):
 		self.street = street
 		self.zip = zip
 		self.grade = grade
+		self.year = year
 
 		self.date = '1/15/95'
 		
@@ -56,7 +59,7 @@ class Administrator(db.Model):
 	hash = db.Column(db.String(128), unique=True)
 	
 	def __init__(self, name, username, password):
-		self.username = username
+		self.username = username.lower()
 		self.hash = bcrypt.hashpw(password, bcrypt.gensalt(work_factor))
 		self.name = name
 
@@ -64,6 +67,9 @@ class Administrator(db.Model):
 		if (bcrypt.hashpw(password, self.hash) == self.hash):
 			return True
 		return False
+
+	def set_password(self, password):
+		self.hash = self.hash = bcrypt.hashpw(password, bcrypt.gensalt(work_factor))
 	
 	def __repr__(self):
 		return '<Administrator %s,%s,%s>' % (self.username, self.name, self.hash)
@@ -94,7 +100,28 @@ def changeconfig():
 	if (token is None or token != app.session_token):
 		return 'You are not logged in.'
 
-	return 'blah'
+	account = db.session.query(Administrator).first()
+
+	realname = request.form["realname"]
+	username = request.form["username"]
+	current_password = request.form["currentpassword"]
+
+	if (not account.test_password(current_password)):
+		return render_template('config.html', realname=realname, username=username, error='That is not the current password for this account.')
+
+	new_password = request.form["password"]
+	confirm_password = request.form["confirmpassword"]
+
+	if (new_password != confirm_password):
+		return render_template('config.html', realname=realname, username=username, error='The new passwords do not match.')
+
+	account.name = realname
+	account.username = username.lower()
+	account.set_password(confirm_password)
+	db.session.add(account)
+	db.session.commit()
+
+	return render_template('panel.html', name=realname)
 
 @app.route("/config")
 def config():
@@ -107,24 +134,71 @@ def config():
 
 	account = db.session.query(Administrator).first()
 	return render_template('config.html', username=account.username, realname=account.name)
-	
+
+@app.route("/logout")
+def logout():
+	token = None
+	if ('token' in session):
+		token = session['token']
+
+	if (token is None or token != app.session_token):
+		return 'You are not logged in.'
+
+	app.session_token = os.urandom(24)
+	return render_template('login.html')
+
+@app.route("/search", methods=["POST","GET"])
+def search():
+	token = None
+	if ('token' in session):
+		token = session['token']
+
+	if (token is None or token != app.session_token):
+		return 'You are not logged in.'
+
+	years = [ ]
+	students = db.session.query(Student)
+	for student in students:
+		if (student.year not in years):
+			years.append(student.year)
+
+	if (request.method == "POST"):
+		year = int(request.form["year"])
+		results = db.session.query(Student).filter_by(year=year)
+		return render_template('search.html', years=years, results=results, year=year)
+
+	return render_template('search.html', years=years)
+
+@app.route("/download/<year>")
+def download(year):
+	token = None
+	if ('token' in session):
+		token = session['token']
+
+	if (token is None or token != app.session_token):
+		return 'You are not logged in.'
+
+	year = int(year)
+	students = db.session.query(Student).filter_by(year=year)
+	return render_template('download.html', students=students)
+
 @app.route("/admin", methods=["POST","GET"])
 def admin():
 	token = None
 	if ('token' in session):
 		token = session['token']
 
-	if (request.method == "GET"):
-		#account = db.session.query(Administrator).first()
+	if (request.method == "GET" and (token is None or token != app.session_token)):
 		return render_template('login.html')
-	#elif (request.method == "GET" and token is not None and token == app.session_token):
-	#	return render_template('panel.html', name=account.name)
+
+	account = db.session.query(Administrator).first()
+	if (request.method == "GET" and token is not None and token == app.session_token):
+		return render_template('panel.html', name=account.name)
 	else:
-		username = request.form["username"]
+		username = request.form["username"].lower()
 		password = request.form["password"]
 
-		account = db.session.query(Administrator).filter_by(username=username).first()
-		if (account is None or account.test_password(password) is not True):
+		if (account.username != username or account.test_password(password) is not True):
 			return render_template('login.html', error='Invalid username or password.')
 
 		token = os.urandom(24)
@@ -217,7 +291,8 @@ def form():
 
 		# TODO: Perhaps make this some type of switch construct at some point?
 		if (error_number == 0): # No Problem
-			student = Student(firstname, lastname, email, homephone, cellphone, school, city, street, int(zip), int(grade))
+			today = date.today()
+			student = Student(firstname, lastname, email, homephone, cellphone, school, city, street, int(zip), int(grade), today.year)
 			db.session.add(student)
 			db.session.commit()
 			return render_template('index.html')

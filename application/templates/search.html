@@ -1,0 +1,49 @@
+<HTML>
+	<head>
+		<title>Administration | Student Searches</title>
+	</head>
+	
+	<body>
+		<center>
+			<a href="admin">Go Back</a></br>
+
+			<form name="search" action="search" method="post">
+				Select Year:
+				<select name="year">
+					<option value="select">Select</option>
+					{% for year in years %}
+						 <option value="{{ year }}">{{ year }}</option>
+					{% endfor %}
+				</select>
+				<input type="submit" value="Search">
+			</form>
+
+			{% if results is defined %}
+			<table border="1">
+				<tr>
+					<td>Name</td>
+					<td>Address</td>
+					<td>School District</td>
+					<td>Home Phone Number</td>
+					<td>Home Cell Phone Number</td>
+					<td>E-Mail Address</td>
+				</tr>
+				{% for result in results %}
+					<tr>
+						<td> {{ result.first_name }} {{ result.last_name }} </td>
+						<td> {{ result.street }} {{ result.city }} </td>
+						<td> {{ result.district }} </td>
+						<td> {{ result.homephone }} </td>
+						<td> {{ result.cellphone }} </td>
+						<td> {{ result.email }} </td>
+					</tr>
+				{% endfor %}
+			</table>
+
+			<a href="download/{{ year }}">Download Results</a>
+			{% endif %} </br></br></br>
+
+			<a href="admin">Go Back</a>
+		</center>
+	</body>
+</HTML>

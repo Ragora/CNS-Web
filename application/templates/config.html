@@ -6,6 +6,20 @@
 	<body>
 		<center>
 			Admin Configuration Settings</br></br>
+
+			{% if error is defined %}
+			<table>
+				<tr>
+					<td>
+						<img src="content/caution.png" width="64" height="64"></img>
+					</td>
+					<td>
+						{{ error }}</br></br>
+					</td>
+				</tr>
+			</table>
+			{% endif %}
+
 			<form name="input" action="changeconfig" method="post">
 				<table>
 					<tr>
@@ -21,7 +35,7 @@
 							Real Name: 
 						</td>
 						<td>
-							<input type="text" name="username" value="{{ realname }}">
+							<input type="text" name="realname" value="{{ realname }}">
 						</td>
 					</tr>
 					<tr>
@@ -51,6 +65,7 @@
 				</table>
 				<input type="submit" value="Confirm">
 			</form>
+			<a href="admin">Cancel</a>
 		</center>
 	</body>
 </HTML>
