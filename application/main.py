@@ -10,29 +10,42 @@ from settings import Settings
 
 import bcrypt
 from flask import Flask, render_template, request, session
-from flask.ext.sqlalchemy import SQLAlchemy
+from sqlalchemy import create_engine
+from sqlalchemy.orm import scoped_session, sessionmaker
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy import Column, Integer, String
 
+settings = Settings('config.cfg')
 app = Flask(__name__, static_folder='static', static_url_path='/content')
+app.secret_key = settings.get_index('SecretKey', str)
 work_factor = 10
-db = SQLAlchemy(app)
+
+engine = create_engine(settings.get_index('DatabaseURI', str), convert_unicode=True)
+db = scoped_session(sessionmaker(autocommit=False, autoflush=False, bind=engine))
+
+Base = declarative_base()
+Base.query = db.query_property()
+
 # Only one Admin user so we don't need to track any other logins.
 app.session_token = os.urandom(24)
 
-class Student(db.Model):
-	id = db.Column(db.Integer, primary_key=True)
-	first_name = db.Column(db.String(32))
-	last_name = db.Column(db.String(32))
-	email = db.Column(db.String(32))
-	homephone = db.Column(db.String(32))
-	cellphone = db.Column(db.String(32))
-	district = db.Column(db.String(32))
-	city = db.Column(db.String(32))
-	street = db.Column(db.String(32))
-	zip = db.Column(db.Integer)
-	grade = db.Column(db.Integer)
-	year = db.Column(db.Integer)
+class Student(Base):
+	__tablename__ = "Student"
 
-	date = db.Column(db.String(32))
+	id = Column(Integer, primary_key=True)
+	first_name = Column(String(32))
+	last_name = Column(String(32))
+	email = Column(String(32))
+	homephone = Column(String(32))
+	cellphone = Column(String(32))
+	district = Column(String(32))
+	city = Column(String(32))
+	street = Column(String(32))
+	zip = Column(Integer)
+	grade = Column(Integer)
+	year = Column(Integer)
+
+	date = Column(String(32))
 	
 	def __init__(self, first_name, last_name, email, homephone, cellphone, district, city, street, zip, grade, year):
 		self.first_name = first_name
@@ -52,11 +65,13 @@ class Student(db.Model):
 	def __repr__(self):
 		return '<Student %s>' % (self.first_name)
 		
-class Administrator(db.Model):
-	id = db.Column(db.Integer, primary_key=True)
-	username = db.Column(db.String(32), unique=True)
-	name = db.Column(db.String(64), unique=True)
-	hash = db.Column(db.String(128), unique=True)
+class Administrator(Base):
+	__tablename__ = "Administrator"
+
+	id = Column(Integer, primary_key=True)
+	username = Column(String(32), unique=True)
+	name = Column(String(64), unique=True)
+	hash = Column(String(128), unique=True)
 	
 	def __init__(self, name, username, password):
 		self.username = username.lower()
@@ -100,7 +115,7 @@ def changeconfig():
 	if (token is None or token != app.session_token):
 		return 'You are not logged in.'
 
-	account = db.session.query(Administrator).first()
+	account = db.query(Administrator).first()
 
 	realname = request.form["realname"]
 	username = request.form["username"]
@@ -118,8 +133,8 @@ def changeconfig():
 	account.name = realname
 	account.username = username.lower()
 	account.set_password(confirm_password)
-	db.session.add(account)
-	db.session.commit()
+	db.add(account)
+	db.commit()
 
 	return render_template('panel.html', name=realname)
 
@@ -132,7 +147,7 @@ def config():
 	if (token is None or token != app.session_token):
 		return 'You are not logged in.'
 
-	account = db.session.query(Administrator).first()
+	account = db.query(Administrator).first()
 	return render_template('config.html', username=account.username, realname=account.name)
 
 @app.route("/logout")
@@ -157,14 +172,14 @@ def search():
 		return 'You are not logged in.'
 
 	years = [ ]
-	students = db.session.query(Student)
+	students = db.query(Student)
 	for student in students:
 		if (student.year not in years):
 			years.append(student.year)
 
 	if (request.method == "POST"):
 		year = int(request.form["year"])
-		results = db.session.query(Student).filter_by(year=year)
+		results = db.query(Student).filter_by(year=year)
 		return render_template('search.html', years=years, results=results, year=year)
 
 	return render_template('search.html', years=years)
@@ -179,7 +194,7 @@ def download(year):
 		return 'You are not logged in.'
 
 	year = int(year)
-	students = db.session.query(Student).filter_by(year=year)
+	students = db.query(Student).filter_by(year=year)
 	return render_template('download.html', students=students)
 
 @app.route("/admin", methods=["POST","GET"])
@@ -191,7 +206,7 @@ def admin():
 	if (request.method == "GET" and (token is None or token != app.session_token)):
 		return render_template('login.html')
 
-	account = db.session.query(Administrator).first()
+	account = db.query(Administrator).first()
 	if (request.method == "GET" and token is not None and token == app.session_token):
 		return render_template('panel.html', name=account.name)
 	else:
@@ -202,6 +217,7 @@ def admin():
 			return render_template('login.html', error='Invalid username or password.')
 
 		token = os.urandom(24)
+
 		app.session_token = token
 		session['token'] = token
 
@@ -299,8 +315,8 @@ def form():
 		if (error_number == 0): # No Problem
 			today = date.today()
 			student = Student(firstname, lastname, email, homephone, cellphone, school, city, street, int(zip), int(grade), today.year)
-			db.session.add(student)
-			db.session.commit()
+			db.add(student)
+			db.commit()
 			return render_template('index.html')
 		elif (error_number == 1): # Bad Phone number
 			return render_template('form.html', title='CNS - Error', error='Please type in either phone number.', firstname=firstname,
@@ -326,9 +342,5 @@ def form():
 		return render_template('form.html', title='CNS', schools=get_schools(select=True))
 
 if __name__ == "__main__":
-	settings = Settings('config.cfg')
-
-	app.config['SQLALCHEMY_DATABASE_URI'] = settings.get_index('DatabaseURI', str)
-	app.secret_key = settings.get_index('SecretKey', str)
 	work_factor = settings.get_index('WorkFactor', int)
 	app.run(debug=True,host='127.0.0.1')
